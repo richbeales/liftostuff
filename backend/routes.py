@@ -1,4 +1,5 @@
 from flask import Blueprint, jsonify, request
+from flask_jwt_extended import jwt_required, get_jwt_identity
 from models import db, Workout, User
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -15,23 +16,21 @@ def get_workout(id):
     return jsonify(workout.to_dict())
 
 @api.route('/workouts', methods=['POST'])
+@jwt_required()
 def create_workout():
     data = request.get_json()
+    current_user_id = get_jwt_identity()
+    user = User.query.get(current_user_id)
     
-    # For demonstration, we're using a default user
-    # In a real app, this would come from authentication
-    default_user = User.query.first()
-    if not default_user:
-        default_user = User(username="demo_user", email="demo@example.com")
-        db.session.add(default_user)
-        db.session.commit()
+    if not user:
+        return jsonify({'error': 'User not found'}), 404
     
     try:
         new_workout = Workout(
             title=data['title'],
             description=data.get('description', ''),
             content=data['content'],
-            user_id=default_user.id
+            user_id=user.id
         )
         db.session.add(new_workout)
         db.session.commit()
@@ -41,8 +40,15 @@ def create_workout():
         return jsonify({'error': str(e)}), 400
     
 @api.route('/workouts/<int:id>', methods=['PUT'])
+@jwt_required()
 def update_workout(id):
+    current_user_id = get_jwt_identity()
     workout = Workout.query.get_or_404(id)
+    
+    # Check if the user owns this workout
+    if workout.user_id != current_user_id:
+        return jsonify({'error': 'Not authorized to update this workout'}), 403
+        
     data = request.get_json()
     
     try:
@@ -60,8 +66,14 @@ def update_workout(id):
         return jsonify({'error': str(e)}), 400
     
 @api.route('/workouts/<int:id>', methods=['DELETE'])
+@jwt_required()
 def delete_workout(id):
+    current_user_id = get_jwt_identity()
     workout = Workout.query.get_or_404(id)
+    
+    # Check if the user owns this workout
+    if workout.user_id != current_user_id:
+        return jsonify({'error': 'Not authorized to delete this workout'}), 403
     try:
         db.session.delete(workout)
         db.session.commit()
