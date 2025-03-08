@@ -10,6 +10,7 @@ import WorkoutDetail from './components/WorkoutDetail';
 import WorkoutForm from './components/WorkoutForm';
 import Login from './components/Login';
 import AuthCallback from './components/AuthCallback';
+import UserProfile from './components/UserProfile';
 
 // Context
 import { AuthProvider, useAuth } from './context/AuthContext';
